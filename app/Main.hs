@@ -7,7 +7,6 @@ import           GrammarLexer
 import           GrammarParser
 import           Utils
 
-
 main :: IO ()
 main = do
   fileName <- getLine
@@ -35,34 +34,45 @@ genParser filePath =
       writeFile (fileBase ++ ".hs") genCode
 
 {-
-{
-data Token =  | bla | la deriving Show
-}
 
 {
-module XYZ (parse) where
-
+module Parser (parse) where
 import Ast (Expression(..))
 }
 
+plus = "\+"     { const PlusT }     { PlusT }
+minus = "-"     { const MinusT }    { MinusT }
+star = "\*"     { const StarT }     { StarT }
+slash = "\\"    { const SlashT }    { SlashT }
+op = "\("       { const OpParT }    { OpParT }
+cl = "\)"       { const ClParT }    { ClParT }
+n = "[0-9]+"    { NumT . read }     { NumT $$ }
+ws = " +"       {}                  {}
 
-plus = "\+"   { const AddT }   { AddT }
-mul = "\*"    { const MulT }   { MulT }
-op = "\("     { const OpParT } { OpT }
-cl = "\)"     { const ClParT } { ClT }
-n = "[0-9]+"  { NumT . read }  { NumT $$ }
 %%
-E -> T E'       { maybe $1 (Add $1) $2 }
-E' -> plus T E' { maybe $2 (Add $2) $3 }
-E' ->           { Nothing }
-T -> F T'       { maybe $1 (Mul $1) $2 }
-T' -> mul F T'  { maybe $2 (Mul $2) $3 }
-T' ->           { Nothing }
-F -> n          { Val $1 }
-F -> op E cl    { $1 }
+
+E -> T E'           { $2 $1 }
+E' -> plus T E'     { $3 . flip Add $2 }
+E' -> minus T E'    { $3 . flip Sub $2 }
+E' ->               { id }
+T -> F T'           { $2 $1 }
+T' -> star F T'     { $3 . flip Mul $2 }
+T' -> slash F T'    { $3 . flip Div $2 }
+T' ->               { id }
+F -> n              { Num $1 }
+F -> op E cl        { $2 }
+F -> minus F        { Neg $2 }
+
 
 {
-data Token = blab | bla | la deriving Show
+data Token  = OpParT
+            | ClParT
+            | PlusT
+            | MinusT
+            | StarT
+            | SlashT
+            | NumT Int
+            deriving Eq
 }
 
 -}

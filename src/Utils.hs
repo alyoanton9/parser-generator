@@ -5,6 +5,7 @@ module Utils
   , maybeToEither
   , removeExtension
   , extractDir
+  , notNull
   ) where
 
 import           Control.Arrow   (second)
@@ -38,3 +39,7 @@ removeExtension ext filename
   
 extractDir :: FilePath -> FilePath
 extractDir = dropWhileEnd (/= '/')
+
+notNull :: [a] -> Bool
+notNull [] = False
+notNull _  = True

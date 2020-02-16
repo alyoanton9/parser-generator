@@ -4,10 +4,12 @@ module Generator
 
 import           Data.Char
 import           Data.Function   ((&))
-import           Data.List       (intercalate, uncons)
+import           Data.List       (intercalate, uncons, find, null, delete)
+import           Data.Maybe      (fromMaybe)
 import           Grammar
 import           Utils           (collect, maybeToEither, replaceNumberStub,
-                                  replaceStub)
+                                  replaceStub, notNull)
+
 
 import qualified Data.Map.Strict as Map
 
@@ -29,14 +31,15 @@ generate initData tokens rules finalData = do
   let imports = myImports & map ("import " ++) & intercalate "\n"
   return $ unlines [initData, imports, finalData, mainFunction, generateTokenizer tokens, mapTokens, unlines nts]
   where
-    tokToI = Map.fromList (map getTokenName tokens `zip` [1 ..])
+    tokens' = filter (\(Token _ _ _ code) -> notNull code) tokens
+    tokToI = Map.fromList (map getTokenName tokens' `zip` [1 ..])
     getTokenName (Token name _ _ _) = name
     mainFunction = unlines [ "parse str = do"
                            , "  tokens <- tokenize str"
                            , "  runP (parse_" ++ firstNT ++ " <* eof) tokens & maybe"
                            , "      (Left \"failed to parse\") (return . fst)"]
     firstNT = head rules & fst
-    mapTokens = tokens & map (\(Token name _ _ ctorCode) -> generateTokenParser (tokToI Map.! name) ctorCode) & unlines
+    mapTokens = tokens' & map (\(Token name _ _ ctorCode) -> generateTokenParser (tokToI Map.! name) ctorCode) & unlines
 
 generateTokenizer :: [Token] -> String
 generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
@@ -54,13 +57,26 @@ generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
         , tokens & map makeTokenizeLine & intercalate "\n"
         , "tokenize str = Left $ \"Tokenization failure at '\" ++ str ++ \"'\""
         ]
-    makeTokenizeLine (Token _ value code _) =
+    makeTokenizeLine (Token _ regex code _) =
       "tokenize str | Just (match, rest) <- prefixMatch str " ++
-      show value ++ " = ( (" ++ code ++ ") match :) <$> tokenize rest"
+      show regex ++ " = " ++ (if null code 
+                              then ""
+                              else "( (" ++ code ++ ") match :) <$> ")
+      ++ "tokenize rest"
+
+{-
+E' ->               { id } [([], "id"), ([NT F, NT T'], "$2 $1")]
+T -> F T'           { $2 $1 }
+-}
 
 generateNonTerminal :: TokToI -> String -> [([Element], Code)] -> Either String String
 generateNonTerminal tokToI nt productionsPairs = do
-  let (productions, codes) = unzip productionsPairs
+  let epsProduction = find (null . fst) productionsPairs
+  --let (productions', codes) = productionsPairs & delete epsProduction & unzip
+  let (productions, codes) =
+        case epsProduction of
+          Just epsProd -> productionsPairs & delete epsProd & (++ [epsProd]) & unzip
+          Nothing      -> productionsPairs & unzip
   let lengths = map length productions
   rules' <- zipWith makeRule [1 ..] productions & sequence
   case uncons rules' of
@@ -76,10 +92,11 @@ generateNonTerminal tokToI nt productionsPairs = do
   where
     makeRule i = generateRule tokToI ("rule" ++ show i)
     makeBindLine i count code = "    " ++ generateBind ("rule" ++ show i) count code
-
 -- find productions with the 0 length => they will be in the end of parse 
 -- if it exist => delete it && go to the end
 -- if it doesn't exist => a pofek!
+--   <|> rule1 <$ ok
+-- alyona don't delete codes, you need it!!!
 
 generateRule :: TokToI -> String -> [Element] -> Either String String
 generateRule tokToI ruleName prod = do
