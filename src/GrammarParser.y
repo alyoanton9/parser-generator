@@ -13,6 +13,7 @@ import qualified    Data.Map.Strict as Map
 %token EQ               {EqToken}
 %token REGEX            {RegexToken $$}
 %token CODE             {CodeToken $$}
+%token SEMI             {SemiColToken}
 
 %token PROC             {ProcToken}
 
@@ -30,7 +31,8 @@ tokens --better eliminate right recursion
     | {- empty -}                   {[]}
 
 token
-    : NAME EQ REGEX CODE CODE       {Token $1 $3 $4 $5}
+    : NAME EQ REGEX CODE CODE       {Token $1 $3 (Just ($4, $5))}
+    | NAME EQ REGEX SEMI            {Token $1 $3 Nothing}
 
 rules
     : rule rules                    {$1 : $2}

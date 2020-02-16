@@ -18,7 +18,6 @@ import           Data.Char
 import           Data.Functor        ((<&>))
 import           Data.Maybe
 
--- our Parser has one field named runP, which is a function
 newtype Parser t a =
   Parser
     { runP :: [t] -> Maybe (a, [t])

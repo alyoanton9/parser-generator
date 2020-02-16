@@ -14,20 +14,20 @@ $apost      = '
 tokens :-
     $white+                                     ;
     $lowletter [$lowletter $under]*             { TokenNameToken }
-    \=                                          {\_ -> EqToken}
+    \=                                          { \_ -> EqToken }
     $quote(.*)$quote                            { RegexToken . tail . init }
     \{(\n | [^\}\{])*\}                         { CodeToken . tail . init }
+    \;                                          { \_ -> SemiColToken }
+    "%%"                                        { \_ -> ProcToken }
 
-    "%%"                                        {\_ -> ProcToken}
-
-    "->"                                        {\_ -> ArrowToken}
+    "->"                                        { \_ -> ArrowToken }
     $highletter [$highletter $digit $apost]*    { NonTermToken }
-    "eps"                                       {\_ -> EpsToken}
-    \;                                          {\_ -> DelimToken}
+    "eps"                                       { \_ -> EpsToken }
+    \;                                          { \_ -> DelimToken }
 
 {
 data GrammarToken   = TokenNameToken String | EqToken | RegexToken String
-                    | CodeToken String | ProcToken
+                    | CodeToken String | SemiColToken | ProcToken
                     | ArrowToken | NonTermToken String | EpsToken | DelimToken
                     deriving Eq
 }

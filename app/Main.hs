@@ -11,10 +11,6 @@ main :: IO ()
 main = do
   fileName <- getLine
   genParser fileName
-{-  input <- getContents
-  let (initData, tokens, rules, finalData) = parseGrammar . alexScanTokens $ input
-  let file = generate initData tokens rules finalData
-  file & either (putStrLn . ("error: " ++)) putStrLn -}
 
 
 genParser :: FilePath -> IO ()
@@ -34,7 +30,7 @@ genParser filePath =
       writeFile (fileBase ++ ".hs") genCode
 
 {-
-
+input grammar example
 {
 module Parser (parse) where
 import Ast (Expression(..))
@@ -47,7 +43,7 @@ slash = "\\"    { const SlashT }    { SlashT }
 op = "\("       { const OpParT }    { OpParT }
 cl = "\)"       { const ClParT }    { ClParT }
 n = "[0-9]+"    { NumT . read }     { NumT $$ }
-ws = " +"       {}                  {}
+ws = " +"       ;
 
 %%
 
@@ -76,5 +72,3 @@ data Token  = OpParT
 }
 
 -}
-
--- expr = term `chainl1` parseAddSub   -- E -> TE'

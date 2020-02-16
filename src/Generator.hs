@@ -4,21 +4,14 @@ module Generator
 
 import           Data.Char
 import           Data.Function   ((&))
-import           Data.List       (intercalate, uncons, find, null, delete)
-import           Data.Maybe      (fromMaybe)
+import           Data.List       (delete, find, intercalate, null, uncons)
+import           Data.Maybe      (fromMaybe, isJust)
 import           Grammar
 import           Utils           (collect, maybeToEither, replaceNumberStub,
-                                  replaceStub, notNull)
-
+                                  replaceStub)
 
 import qualified Data.Map.Strict as Map
 
-{-
-
-data Token = Token TokenName TokenValue TokenCode deriving (Eq, Show, Ord)
-type Rule = (NonTerminal, ([Element], Code))
-
--}
 type TokToI = Map.Map String Int
 
 myImports :: [String]
@@ -31,15 +24,19 @@ generate initData tokens rules finalData = do
   let imports = myImports & map ("import " ++) & intercalate "\n"
   return $ unlines [initData, imports, finalData, mainFunction, generateTokenizer tokens, mapTokens, unlines nts]
   where
-    tokens' = filter (\(Token _ _ _ code) -> notNull code) tokens
+    tokens' = filter (\(Token _ _ maybeCode) -> isJust maybeCode) tokens
     tokToI = Map.fromList (map getTokenName tokens' `zip` [1 ..])
-    getTokenName (Token name _ _ _) = name
-    mainFunction = unlines [ "parse str = do"
-                           , "  tokens <- tokenize str"
-                           , "  runP (parse_" ++ firstNT ++ " <* eof) tokens & maybe"
-                           , "      (Left \"failed to parse\") (return . fst)"]
+    getTokenName (Token name _ _) = name
+    mainFunction =
+      unlines
+        [ "parse str = do"
+        , "  tokens <- tokenize str"
+        , "  runP (parse_" ++ firstNT ++ " <* eof) tokens & maybe"
+        , "      (Left \"failed to parse\") (return . fst)"
+        ]
     firstNT = head rules & fst
-    mapTokens = tokens' & map (\(Token name _ _ ctorCode) -> generateTokenParser (tokToI Map.! name) ctorCode) & unlines
+    mapTokens =
+      tokens' & map (\(Token name _ (Just (_, ctorCode))) -> generateTokenParser (tokToI Map.! name) ctorCode) & unlines
 
 generateTokenizer :: [Token] -> String
 generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
@@ -57,26 +54,22 @@ generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
         , tokens & map makeTokenizeLine & intercalate "\n"
         , "tokenize str = Left $ \"Tokenization failure at '\" ++ str ++ \"'\""
         ]
-    makeTokenizeLine (Token _ regex code _) =
+    makeTokenizeLine (Token _ regex maybeCode) =
       "tokenize str | Just (match, rest) <- prefixMatch str " ++
-      show regex ++ " = " ++ (if null code 
-                              then ""
-                              else "( (" ++ code ++ ") match :) <$> ")
-      ++ "tokenize rest"
-
-{-
-E' ->               { id } [([], "id"), ([NT F, NT T'], "$2 $1")]
-T -> F T'           { $2 $1 }
--}
+      show regex ++
+      " = " ++
+      (case maybeCode of
+         Nothing        -> ""
+         Just (code, _) -> "( (" ++ code ++ ") match :) <$> ") ++
+      "tokenize rest"
 
 generateNonTerminal :: TokToI -> String -> [([Element], Code)] -> Either String String
 generateNonTerminal tokToI nt productionsPairs = do
   let epsProduction = find (null . fst) productionsPairs
-  --let (productions', codes) = productionsPairs & delete epsProduction & unzip
   let (productions, codes) =
         case epsProduction of
           Just epsProd -> productionsPairs & delete epsProd & (++ [epsProd]) & unzip
-          Nothing      -> productionsPairs & unzip
+          Nothing -> productionsPairs & unzip
   let lengths = map length productions
   rules' <- zipWith makeRule [1 ..] productions & sequence
   case uncons rules' of
@@ -92,11 +85,6 @@ generateNonTerminal tokToI nt productionsPairs = do
   where
     makeRule i = generateRule tokToI ("rule" ++ show i)
     makeBindLine i count code = "    " ++ generateBind ("rule" ++ show i) count code
--- find productions with the 0 length => they will be in the end of parse 
--- if it exist => delete it && go to the end
--- if it doesn't exist => a pofek!
---   <|> rule1 <$ ok
--- alyona don't delete codes, you need it!!!
 
 generateRule :: TokToI -> String -> [Element] -> Either String String
 generateRule tokToI ruleName prod = do
@@ -126,54 +114,3 @@ generateTokenParser tokenI ctorCode
 
 makeTokenExtractorBinding :: String -> String
 makeTokenExtractorBinding ctor = unlines ["  where", "    getV (" ++ ctor ++ ") = Just v", "    getV _ = Nothing"]
-
--- let it be like this, examples of used modules
-{-
-tokens = [Token "plus" "+", Token "mul" "*", Token "num" "[0-9]+"]
-
-parseAddSub :: Parser (Expression -> Expression -> Expression)
-parseAddSub = (parseBinOper AddT Add) <|> (parseBinOper SubT Sub)
-parseT =
-data Token  = OpParT --op
-            | ClParT --cl
-            | AddT   --add
-            | SubT
-            | MulT
-            | DivT
-            | ModT
-            | NegT
-            | NumT Int
-            | ErrorT String
-            deriving Eq
--}
-{-
-2: T -> T + F { Add $1 $3 }
-      | T - F { Sub $1 $3 }
-4: T -> F     { $1 }
-5: T -> n     { $1 & \(NumT v) -> Var v }
-
-(<$>) :: Functor f => (a -> b) -> f a -> f b
-(<*>) :: f (a -> b) -> f a -> f b --applic
-(<*) :: f a -> f b -> f a
-
-func1 :: Expr -> Token -> Expr -> Expr
-
-parseT
-    = func1 <$> parseT <* parseToken '+" <*> parseF
-  <|> func2 <$> parseT <*> parseToken '-' <*> parseF
-  <|> func3 <$> parseF
-
-     where
-       func1 v1 v2 v3 = Add v1 v3
-       func2 v1 v2 v3 = Sub v1 v3
-       func3 v1 = v1
-
--- lection notes
--XTupleSection
-map (42,) [1..5] => [(42,1)..(42,5)]
-
-list comprehension
--}
--- If token is regular expression => need to have one more field for its constructor
--- parseToken, tokenPred ?
--- read what in {} -> grammar
