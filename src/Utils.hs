@@ -14,7 +14,7 @@ import qualified Data.Map.Strict as Map
 import           Data.List       (isSuffixOf, dropWhileEnd)
 
 collect :: Ord k => [(k, v)] -> [(k, [v])]
-collect pairs = pairs & map (second pure) & Map.fromListWith (++) & Map.toList
+collect pairs = pairs & map (second pure) & Map.fromListWith (++) & Map.toList & map (second reverse)
 
 replaceStub :: String -> String -> Maybe String
 replaceStub _ "" = Nothing

@@ -21,6 +21,7 @@ import qualified    Data.Map.Strict as Map
 %token ARR              {ArrowToken}
 %token EPS              {EpsToken}
 %token DEL              {DelimToken}
+
 %%
 
 grammar

@@ -17,7 +17,6 @@ type TokToI = Map.Map String Int
 myImports :: [String]
 myImports = ["Common", "Text.Regex.TDFA ((=~~))", "Control.Exception (assert)", "Data.Function ((&))"]
 
---map ("tokenize str | Just (match, right) <- prefixMatch "
 generate :: String -> [Token] -> [Rule] -> String -> Either String String
 generate initData tokens rules finalData = do
   nts <- collect rules & mapM (uncurry $ generateNonTerminal tokToI)
@@ -45,7 +44,7 @@ generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
       unlines
         [ "prefixMatch :: String -> String -> Maybe (String, String)"
         , "prefixMatch str regex = do"
-        , "    (left, middle, right) <- str =~~ ('^' : regex)"
+        , "    (left, middle, right) <- str =~~ ('\\\\' : '`' : regex)"
         , "    assert (\"\" == left) $ return (middle, right)"
         ]
     tokenizerFunction =
@@ -66,10 +65,11 @@ generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
 generateNonTerminal :: TokToI -> String -> [([Element], Code)] -> Either String String
 generateNonTerminal tokToI nt productionsPairs = do
   let epsProduction = find (null . fst) productionsPairs
-  let (productions, codes) =
+  {-let (productions, codes) =
         case epsProduction of
           Just epsProd -> productionsPairs & delete epsProd & (++ [epsProd]) & unzip
-          Nothing -> productionsPairs & unzip
+          Nothing -> productionsPairs & unzip-}
+  let (productions, codes) = productionsPairs & unzip
   let lengths = map length productions
   rules' <- zipWith makeRule [1 ..] productions & sequence
   case uncons rules' of
