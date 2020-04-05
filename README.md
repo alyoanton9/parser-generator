@@ -1,5 +1,4 @@
 # parser-degenerator
-Parser generator **for Translational Methods** course
 
 Program, that generates parsers from LL1 input grammar with synthesized attributes.
 
