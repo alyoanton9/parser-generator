@@ -30,20 +30,21 @@ genParser filePath =
       writeFile (fileBase ++ ".hs") genCode
 
 {-
-input grammar example
+Input grammar example:
+
 {
 module Parser (parse) where
 import Ast (Expression(..))
 }
 
-plus = "\+"     { const PlusT }     { PlusT }
-minus = "-"     { const MinusT }    { MinusT }
-star = "\*"     { const StarT }     { StarT }
-slash = "\\"    { const SlashT }    { SlashT }
-op = "\("       { const OpParT }    { OpParT }
-cl = "\)"       { const ClParT }    { ClParT }
-n = "[0-9]+"    { NumT . read }     { NumT $$ }
-ws = " +"       ;
+plus = "\+"         { const PlusT }     { PlusT }
+minus = "-"         { const MinusT }    { MinusT }
+star = "\*"         { const StarT }     { StarT }
+slash = "\\"        { const SlashT }    { SlashT }
+op = "\("           { const OpParT }    { OpParT }
+cl = "\)"           { const ClParT }    { ClParT }
+n = "[0-9]+"        { NumT . read }     { NumT $$ }
+ws = "[[:space:]]+" ;
 
 %%
 

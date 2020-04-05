@@ -65,10 +65,6 @@ generateTokenizer tokens = helperFunction ++ "\n" ++ tokenizerFunction
 generateNonTerminal :: TokToI -> String -> [([Element], Code)] -> Either String String
 generateNonTerminal tokToI nt productionsPairs = do
   let epsProduction = find (null . fst) productionsPairs
-  {-let (productions, codes) =
-        case epsProduction of
-          Just epsProd -> productionsPairs & delete epsProd & (++ [epsProd]) & unzip
-          Nothing -> productionsPairs & unzip-}
   let (productions, codes) = productionsPairs & unzip
   let lengths = map length productions
   rules' <- zipWith makeRule [1 ..] productions & sequence
@@ -90,7 +86,7 @@ generateRule :: TokToI -> String -> [Element] -> Either String String
 generateRule tokToI ruleName prod = do
   funcs <- mapM genFunc prod
   let args =
-        if null prod
+        if null prod -- case head prod of (Epsilon)
           then " <$ ok"
           else " <$> " ++ intercalate " <*> " funcs
   return $ ruleName ++ args
@@ -100,7 +96,6 @@ generateRule tokToI ruleName prod = do
       | otherwise = Left "Unkown terminal"
     genFunc (NT nt) = return $ "parse_" ++ nt
 
--- {Add $2 $3}
 generateBind :: String -> Int -> Code -> String
 generateBind ruleName count code =
   ruleName ++ " " ++ unwords (map (("v" ++) . show) [1 .. count]) ++ " = " ++ replaceNumberStub "v" code
