@@ -1,4 +1,4 @@
-
+# parser-degenerator
 
 Program, that generates parsers from LL1 input grammar with synthesized attributes.
 
